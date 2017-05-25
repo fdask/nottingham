@@ -51,14 +51,21 @@ class Player {
 	* @return string
 	**/
 	public function __toString() {
-		$ret = $this->getName() . " [" . $this->getGold() . "]\n";
+		$ret = $this->getName() . " [" . $this->getGold() . "]";
 
+		if ($this->getDoneTurn()) {
+			$ret .= " - DONE";
+		}
+
+		$ret .= "\n";
+	
 		$ret .= $this->getCardHand() . "\n";
 		$ret .= $this->getCardPublicStand() . "\n";
 		$ret .= $this->getCardHiddenStand() . "\n";
 
 		return $ret;
 	}
+
 	/**
 	* sets the name property
 	*

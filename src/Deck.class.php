@@ -4,7 +4,7 @@ namespace fdask\Sheriff;
 /**
 * represents a deck
 **/
-class Deck implements \Iterator {
+class Deck implements \Iterator, \Countable {
 	/** @var string give a name to a deck **/
 	public $name = null;
 
@@ -23,6 +23,15 @@ class Deck implements \Iterator {
 	public function __construct() {
 		$this->position = 0;
 		$this->cards = array();
+	}
+
+	/**
+	* method to implement countable
+	*
+	* @return integer
+	**/
+	public function count() {
+		return count($this->cards);
 	}
 
 	// methods required to implement Iterator

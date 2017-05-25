@@ -46,9 +46,6 @@ $game->setDrawDeck($drawDeck);
 $game->setDiscardOneDeck($discardOneDeck);
 $game->setDiscardTwoDeck($discardTwoDeck);
 
-// start the game.
-$game->initialDeal();
-
 // pick a sheriff.
 $sheriff = $game->getRandomPlayer();
 $game->setSheriff($sheriff);
@@ -59,6 +56,9 @@ do {
 } while ($turn == $sheriff);
 
 $game->setTurn($turn);
+
+// start the game.
+$game->initialDeal();
 
 echo $game;
 

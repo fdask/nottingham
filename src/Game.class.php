@@ -186,11 +186,13 @@ class Game {
 	* @return Player
 	**/
 	public function nextTurn() {
-		if (isset($this->players[($this->turn + 1)])) {
-			$this->turn++;
-		} else {
-			$this->turn = 0;
-		}
+		do {
+			if (isset($this->players[($this->turn + 1)])) {
+				$this->turn++;
+			} else {
+				$this->turn = 0;
+			}
+		} while ($this->turn != $this->sheriff);
 
 		return $this->players[$this->turn];
 	}
@@ -319,6 +321,22 @@ class Game {
 			$card = $this->getDrawDeck()->getCard();
 			$this->getDiscardTwoDeck()->addCard($card);
 		}
+
+		echo $this . "\n";
+
+		// now kick right into the game!
+		$this->gameStart();
+	}
+
+	public function gameStart() {
+		// full player loops (a certain number of these ends the game)
+		$loops = 0;
+
+		do {
+			$this->marketPhase();
+
+			$loops++;
+		} while ($loops <= 2);
 	}
 
 	/**
@@ -457,33 +475,179 @@ class Game {
 				echo $this->players[$x];
 			}	
 		} else if (trim($cbits[0]) == "done") {
-			if ($this->getState() == self::STATE_STARTUP) {
-				// if the game state is still in the first round, mark the player as done
-				$this->players[$player]->setDoneTurn(true);	
+			$phase = $this->getPhase();
 
-				// check to see if all players are done
-				$everyoneReady = true;
+			switch ($phase) {
+				case self::PHASE_MARKET:
+					// check to see that the user has six cards.
+					$hand = $this->players[$playerNum]->getCardHand();
 
-				foreach ($this->players as $player) {
-					if (!$player->getDoneTurn()) {
-						$everyoneReady = false;
+					if (count($hand) == 6) {
+						$this->players[$playerNum]->setDoneTurn(true);
+
+						// check that all non sheriff people are done!
+	
+					} else {
+						echo "You need six cards in your hand!\n";
 					}
-				}
 
-				if ($everyoneReady) {
-					// advance the game to actual gameplay!!
-					echo "EVERYONE IS READY!  Advancing game to regular turns!\n";
-					echo "Player " . ($this->getTurn() + 1) . " is up first!\n";
+					break;
+				case self::PHASE_BAGLOAD:
+					break;
+				case self::PHASE_DECLARE:
+					break;
+				case self::PHASE_INSPECT:
+					break;
+				case self::PHASE_CLEANUP:
 
-					$this->setState(self::STATE_REGULAR);
-
-					echo $this->players[$this->getTurn()];
-				}
-			} else {
-				// lets assume the player is ending their turn!  or going to the next phase, anyway.
+					break;
+				default:
+					echo "Unknown game phase! ($phase)\n";
 			}
 		} else {
 			$this->turnHelp();
+		}
+	}
+
+	/**
+	* code to execute the market phase of a game 
+	**/
+	public function marketPhase() {
+		// for every player who isn't a sheriff, complete the draw!
+		for ($x = 0; $x < count($this->players) - 1; $x++) {
+			$playerNum = $this->getTurn();
+			$player = $this->players[$playerNum];	
+
+			$discard = new Deck();
+			$discard->setName("Player " . ($playerNum + 1) . "'s discard pile");
+			$discard->setState(Card::STATE_FACEDOWN);
+
+			$cardDrop = 0;
+			$mainDeckDraw = false;
+			$discardsTransferred = false;
+
+			do {
+				$input = readline("MARKET (" . $player->getName() . "): ");
+				readline_add_history($input);
+
+				if (preg_match("@^drop(\d)@", $input, $matches)) {
+					if ($cardDrop < 5) {
+						$cardNum = $matches[1];
+						$card = $player->getCardHand()->getCardByPosition($cardNum);
+						$discard->addCard($card);
+
+						$cardDrop++;
+
+						echo $discard . "\n";
+						echo $player->getCardHand() . "\n";
+					} else {
+						echo "You can discard a maximum of five cards!\n";
+					}
+				} else if (preg_match("@transfer(\d),(1|2)@", $input, $matches)) {
+					if (count($player->getCardHand()) == 6) {
+						if (count($discard) > 0) {
+							$discardNum = $matches[1];
+							$discardPileNum = $matches[2];
+
+							$card = $discard->getCardByPosition($discardNum);
+
+							if ($card) {
+								if ($discardPileNum === "1") {
+									$this->getDiscardOneDeck()->addCard($card);
+								} else {
+									$this->getDiscardTwoDeck()->addCard($card);
+								}
+
+								$discardsTransferred;
+							} else {
+								echo "Discard #$discardNum not found!\n";
+							}
+						} else {
+							echo "No more discards to transfer!\n";
+						}
+					} else {
+						echo "Please draw six cards before transferring discards\n";
+					}
+				} else if (preg_match("@^draw(\d?)@", $input, $matches)) {
+					$bits = explode(",", $input);
+					$drawCount = (int)trim($bits[1]);
+
+					if ($drawCount + count($player->getCardHand()) > 6) {
+						echo "You can't have more than six cards!\n";
+					} else {
+						switch (trim($matches[1])) {
+							case '':
+								if (count($this->getDrawDeck()) >= $drawCount) {
+									echo "Drawing $drawCount from the main deck!\n";
+
+									for (; $drawCount > 0; $drawCount--) {
+										$card = $this->getDrawDeck()->getCard();
+
+										$player->getCardHand()->addCard($card);
+									}
+
+									$mainDeckDraw = true;
+								} else {
+									echo "Not enough cards in deck!\n";
+								}
+
+								break;
+							case '1':
+								if (!$mainDeckDraw) {
+									if (count($this->getDiscardOneDeck()) >= $drawCount) {
+										echo "Drawing $drawCount from discard pile 1!\n";
+
+										for (; $drawCount > 0; $drawCount--) {
+											$card = $this->getDiscardOneDeck()->getCard();
+
+											$player->getCardHand()->addCard($card);
+										}
+									} else {
+										echo "Not enough cards in deck!\n";
+									}
+								} else {
+									echo "You've already taken from the main pile!\n";
+								}
+
+								break;
+							case '2':
+								if (!$mainDeckDraw) {
+									if (count($this->getDiscardTwoDeck()) >= $drawCount) {
+										echo "Drawing $drawCount from discard pile 2!\n";
+
+										for (; $drawCount > 0; $drawCount--) {
+											$card = $this->getDiscardTwoDeck()->getCard();
+
+											$player->getCardHand()->addCard($card);
+										}
+									} else {
+										echo "Not enough cards in deck!\n";
+									}
+								} else {
+									echo "You've already taken from the main pile!\n";
+								}
+
+								break;
+							default:
+								echo "Invalid move!\n";
+						}
+					}
+				} else if ($input == "done") {
+					// make sure the discard deck has been emptied.
+					if (count($discard) > 0) {
+						echo "Please get rid of the discards!\n";
+					} else if (count($player->getCardHand()) != 6) {
+						echo "You need six cards to continue.\n";
+					} else {
+						$player->setDoneTurn(true);		
+					}	
+				} else {
+					$this->getMove($input);
+				}
+			} while (!$player->getDoneTurn());
+
+			// advance to the next users turn!
+			$this->nextTurn();
 		}
 	}
 
@@ -496,6 +660,7 @@ class Game {
 		echo "d - Show both discard decks\n";
 		echo "d1 - Show first discard deck\n";
 		echo "d2 - Show second discard deck\n";
+		echo "dropX - Discard card (market phase)\n";
 		echo "done - Finish your turn\n";
 		echo "p - Show data on all players\n";
 		echo "pX - Show data on player\n";
