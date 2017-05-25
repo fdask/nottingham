@@ -184,13 +184,31 @@ class Deck implements \Iterator, \Countable {
 	}
 
 	/**
+	* sorts the cards by name!
+	* 
+	* @return boolean indicating success or failure
+	**/
+	public function sort() {
+		return usort($this->cards, function ($a, $b) {
+			$aName = $a->getName();
+			$bName = $b->getName();
+
+			if ($aName == $bName) {
+				return 0;
+			} else {
+				return strcmp($aName, $bName);
+			}
+		});	
+	}
+
+	/**
 	* retrieves a single card from the top of the cards array
 	*
 	* @return false|object 
 	**/
 	public function getCard() {
 		if (count($this->cards) > 0) {
-			$card = array_pop($this->cards);
+			$card = array_shift($this->cards);
 
 			return $card;
 		}

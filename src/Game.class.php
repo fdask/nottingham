@@ -311,6 +311,11 @@ class Game {
 			}
 		}
 
+		// sort the players hands
+		foreach ($this->players as $pos => $player) {
+			$this->players[$pos]->getCardHand()->sort();
+		}
+
 		// set up the two discard Decks
 		for ($x = 0; $x < 5; $x++) {
 			$card = $this->getDrawDeck()->getCard();
@@ -535,6 +540,7 @@ class Game {
 						$cardNum = $matches[1];
 						$card = $player->getCardHand()->getCardByPosition($cardNum);
 						$discard->addCard($card);
+						$discard->sort();
 
 						$cardDrop++;
 
@@ -586,6 +592,8 @@ class Game {
 										$player->getCardHand()->addCard($card);
 									}
 
+									$player->getCardHand()->sort();
+
 									$mainDeckDraw = true;
 								} else {
 									echo "Not enough cards in deck!\n";
@@ -602,6 +610,8 @@ class Game {
 
 											$player->getCardHand()->addCard($card);
 										}
+
+										$player->getCardHand()->sort();
 									} else {
 										echo "Not enough cards in deck!\n";
 									}
@@ -620,6 +630,8 @@ class Game {
 
 											$player->getCardHand()->addCard($card);
 										}
+
+										$player->getCardHand()->sort();
 									} else {
 										echo "Not enough cards in deck!\n";
 									}
@@ -660,10 +672,22 @@ class Game {
 		echo "d - Show both discard decks\n";
 		echo "d1 - Show first discard deck\n";
 		echo "d2 - Show second discard deck\n";
-		echo "dropX - Discard card (market phase)\n";
-		echo "done - Finish your turn\n";
 		echo "p - Show data on all players\n";
 		echo "pX - Show data on player\n";
+
+		switch ($this->getPhase()) {
+			case self::PHASE_MARKET:
+				echo "draw,X - pick up X cards from the draw deck\n";
+				echo "draw1,X - pick up X cards from discard pile 1\n";
+				echo "draw2,X - pick up X cards from discard pile 2\n";
+				echo "transferX,1 - transfer card X into discard pile 1\n";
+				echo "transferX,2 - transfer card X into discard pile 2\n";
+				
+				break;
+			default:
+		}
+
+		echo "done - Finish your turn\n";
 	}
 
 	/**
