@@ -152,8 +152,9 @@ class Deck implements \Iterator, \Countable {
 	* adds a single card object to the cards property
 	*
 	* @param object $card
+	* @param boolean $back whether the card should go onto the front or back of the deck
 	**/
-	public function addCard(Card $card) {
+	public function addCard(Card $card, $back = false) {
 		if (is_null($this->cards)) {
 			$this->cards = array();
 		}
@@ -162,7 +163,11 @@ class Deck implements \Iterator, \Countable {
 		$card->setState($this->getState());
 
 		// add it to the pile	
-		$this->cards[] = $card;
+		if (!$back) {
+			$this->cards[] = $card;
+		} else {
+			array_unshift($this->cards, $card);
+		}
 	}
 
 	/**

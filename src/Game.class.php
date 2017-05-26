@@ -192,7 +192,7 @@ class Game {
 			} else {
 				$this->turn = 0;
 			}
-		} while ($this->turn != $this->sheriff);
+		} while ($this->turn == $this->sheriff);
 
 		return $this->players[$this->turn];
 	}
@@ -339,6 +339,7 @@ class Game {
 
 		do {
 			$this->marketPhase();
+			$this->bagloadPhase();
 
 			$loops++;
 		} while ($loops <= 2);
@@ -518,18 +519,21 @@ class Game {
 	* code to execute the market phase of a game 
 	**/
 	public function marketPhase() {
+		$this->setPhase(self::PHASE_MARKET);
+
 		// for every player who isn't a sheriff, complete the draw!
-		for ($x = 0; $x < count($this->players) - 1; $x++) {
+		for ($x = 0; $x < (count($this->players) - 1); $x++) {
 			$playerNum = $this->getTurn();
 			$player = $this->players[$playerNum];	
 
-			$discard = new Deck();
+			$discard = $player->getCardAux();
 			$discard->setName("Player " . ($playerNum + 1) . "'s discard pile");
 			$discard->setState(Card::STATE_FACEDOWN);
 
 			$cardDrop = 0;
 			$mainDeckDraw = false;
 			$discardsTransferred = false;
+			$drawnCards = false;
 
 			do {
 				$input = readline("MARKET (" . $player->getName() . "): ");
@@ -537,34 +541,45 @@ class Game {
 
 				if (preg_match("@^drop(\d)@", $input, $matches)) {
 					if ($cardDrop < 5) {
-						$cardNum = $matches[1];
-						$card = $player->getCardHand()->getCardByPosition($cardNum);
-						$discard->addCard($card);
-						$discard->sort();
+						if (!$drawnCards) {
+							$cardNum = $matches[1];
+							$card = $player->getCardHand()->getCardByPosition($cardNum);
+							$discard->addCard($card);
+							$discard->sort();
 
-						$cardDrop++;
+							$cardDrop++;
 
-						echo $discard . "\n";
-						echo $player->getCardHand() . "\n";
+							echo $discard . "\n";
+							echo $player->getCardHand() . "\n";
+						} else {
+							echo "You've already started drawing cards.  You can't discard any more!\n";
+						}
 					} else {
 						echo "You can discard a maximum of five cards!\n";
 					}
-				} else if (preg_match("@transfer(\d),(1|2)@", $input, $matches)) {
+				} else if (preg_match("@transfer(1|2),(\d)@", $input, $matches)) {
 					if (count($player->getCardHand()) == 6) {
 						if (count($discard) > 0) {
-							$discardNum = $matches[1];
-							$discardPileNum = $matches[2];
+							$discardPileNum = $matches[1];
+							$discardNum = $matches[2];
 
 							$card = $discard->getCardByPosition($discardNum);
 
 							if ($card) {
 								if ($discardPileNum === "1") {
-									$this->getDiscardOneDeck()->addCard($card);
+									echo "Putting card onto discard deck 1\n";
+
+									$this->getDiscardOneDeck()->addCard($card, true);
 								} else {
-									$this->getDiscardTwoDeck()->addCard($card);
+									echo "Putting card onto discard deck 2\n";
+
+									$this->getDiscardTwoDeck()->addCard($card, true);
 								}
 
-								$discardsTransferred;
+								$discardsTransferred = true;
+
+								echo $discard . "\n";
+								echo $player->getCardHand() . "\n";
 							} else {
 								echo "Discard #$discardNum not found!\n";
 							}
@@ -595,6 +610,10 @@ class Game {
 									$player->getCardHand()->sort();
 
 									$mainDeckDraw = true;
+									$drawnCards = true;
+
+									echo $discard . "\n";
+									echo $player->getCardHand() . "\n";
 								} else {
 									echo "Not enough cards in deck!\n";
 								}
@@ -612,6 +631,11 @@ class Game {
 										}
 
 										$player->getCardHand()->sort();
+
+										$drawnCards = true;
+
+										echo $discard . "\n";
+										echo $player->getCardHand() . "\n";
 									} else {
 										echo "Not enough cards in deck!\n";
 									}
@@ -632,6 +656,11 @@ class Game {
 										}
 
 										$player->getCardHand()->sort();
+
+										$drawnCards = true;
+
+										echo $discard . "\n";
+										echo $player->getCardHand() . "\n";
 									} else {
 										echo "Not enough cards in deck!\n";
 									}
@@ -664,6 +693,84 @@ class Game {
 	}
 
 	/**
+	* game code for loading up the market bags!
+	**/
+	public function bagloadPhase() {
+		$this->setPhase(self::PHASE_BAGLOAD);
+
+		// for every player who isn't a sheriff, complete the draw!
+		for ($x = 0; $x < (count($this->players) - 1); $x++) {
+			$playerNum = $this->getTurn();
+			$player = $this->players[$playerNum];	
+
+			$bag = new Deck();
+			$bag->setName("Player " . ($playerNum + 1) . "'s market bag!");
+			$bag->setState(Card::STATE_FACEDOWN);
+
+			$player->setCardAux($bag);
+
+			do {
+				$input = readline("BAGLOAD (" . $player->getName() . "): ");
+				readline_add_history($input);
+
+				if (preg_match("@m(\d)@", $input, $matches)) {
+					// move a card from the marketbag back to your hand
+					if (count($bag) > 0) {
+						$cardNum = $matches[1];
+
+						$card = $bag->getCardByPosition($cardNum);
+
+						if ($card) {
+							echo "Card transferred to hand!\n";
+
+							$player->getCardHand()->addCard($card);
+
+							echo $bag . "\n";
+							echo $player->getCardHand() . "\n";
+						} else {
+							echo "Card not found!\n";
+						}
+					} else {
+						echo "Marketbag is empty!\n";
+					}
+				} else if (preg_match("@h(\d)@", $input, $matches)) {
+					// move a card from your hand to the marketbag
+					if (count($bag) < 5) {
+						$cardNum = $matches[1];
+
+						$card = $player->getCardHand()->getCardByPosition($cardNum);
+
+						if ($card) {
+							echo "Card transferred to market bag!\n";
+
+							$bag->addCard($card);
+
+							echo $bag . "\n";
+							echo $player->getCardHand() . "\n";
+						} else {
+							echo "Card not found!\n";
+						}
+					} else {
+						echo "Marketbag holds a maximum five goods!\n";
+					}
+				} else if ($input == "done") {
+					// make sure user has added at least one card to their market bag
+					if (count($bag) < 1) {
+						echo "You have to add at least one item into the market bag!\n";
+					} else {
+						$player->setDoneTurn(true);		
+					}	
+				} else {
+					$this->getMove($input);
+				}	
+			} while (!$player->getDoneTurn());
+
+			// advance to the next users turn!
+			$this->nextTurn();
+		}
+	}
+
+	/**
 	* outputs text describing possible moves
 	***/
 	public function turnHelp() {
@@ -680,9 +787,15 @@ class Game {
 				echo "draw,X - pick up X cards from the draw deck\n";
 				echo "draw1,X - pick up X cards from discard pile 1\n";
 				echo "draw2,X - pick up X cards from discard pile 2\n";
-				echo "transferX,1 - transfer card X into discard pile 1\n";
-				echo "transferX,2 - transfer card X into discard pile 2\n";
+				echo "dropX - Set aside the card from your hand for discard\n";
+				echo "transfer1,X - transfer card X into discard pile 1\n";
+				echo "transfer2,X - transfer card X into discard pile 2\n";
 				
+				break;
+			case self::PHASE_BAGLOAD:
+				echo "mX - transfer a card from your market bag back to your hand\n";
+				echo "hX - transfer a card from your hand to the market bag\n";
+
 				break;
 			default:
 		}

@@ -25,6 +25,9 @@ class Player {
 	/** @var Deck representing the cards in the players hidden market stand **/
 	public $cardHiddenStand = null;
 
+	/** @var Deck an extra hand of cards used for various purposes **/
+	public $cardAux = null;
+
 	/** @var boolean indicating the player has finished their turn **/
 	public $doneTurn = null;
 
@@ -43,6 +46,10 @@ class Player {
 		$this->cardHiddenStand = new Deck();
 		$this->cardHiddenStand->setName("Contraband Stash");
 		$this->cardHiddenStand->setState(Card::STATE_FACEDOWN);
+
+		$this->cardAux = new Deck();
+		$this->cardAux->setName("Aux Deck");
+		$this->cardAux->setState(Card::STATE_FACEDOWN);
 	}
 
 	/**
@@ -62,6 +69,10 @@ class Player {
 		$ret .= $this->getCardHand() . "\n";
 		$ret .= $this->getCardPublicStand() . "\n";
 		$ret .= $this->getCardHiddenStand() . "\n";
+
+		if (count($this->getCardAux()) > 0) {
+			$ret .= $this->getCardAux() . "\n";
+		}
 
 		return $ret;
 	}
@@ -179,6 +190,24 @@ class Player {
 	**/
 	public function getCardHiddenStand() {
 		return $this->cardHiddenStand;
+	}
+
+	/**
+	* sets the cardAux property
+	*
+	* @param Deck $deck
+	**/
+	public function setCardAux(Deck $deck) {
+		$this->cardAux = $deck;
+	}
+
+	/**
+	* gets the cardAux property
+	*
+	* @return Deck
+	**/
+	public function getCardAux() {
+		return $this->cardAux;
 	}
 
 	/**
